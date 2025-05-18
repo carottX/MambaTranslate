@@ -1,5 +1,5 @@
 import random
-from typing import AnyStr, Tuple
+from typing import AnyStr, Tuple, List
 from collections import Counter
 import numpy as np
 import html
@@ -9,11 +9,6 @@ import pandas as pd
 import sentencepiece as spm
 import torch
 from torch.utils.data import Dataset
-from typing import List
-
-import random
-import pandas as pd
-from typing import Tuple
 
 def separate_data() -> Tuple[list, list, list, list, list, list]:
     filename = 'dataset/dataset.csv'
@@ -32,12 +27,12 @@ def separate_data() -> Tuple[list, list, list, list, list, list]:
     random.shuffle(paired)
 
     n_total = len(paired)
-    n_train = int(n_total * 0.98)
-    n_valid = int(n_total * 0.01)
+    n_train = int(n_total * 0.1)
+    n_valid = int(n_total * 0.001)
 
     train = paired[:n_train]
     valid = paired[n_train:n_train + n_valid]
-    test = paired[n_train + n_valid:]
+    test = paired[n_train + n_valid: n_train+n_valid+n_valid]
 
     train_zh = [x[0] + '\n' for x in train]
     train_en = [x[1] + '\n' for x in train]
@@ -165,7 +160,7 @@ class TranslateData(Dataset):
             tgt_lang = ZH
 
         # 拼接格式：<src_lang> 源句 <tgt_lang> 目标句 <eos>
-        input_ids = [src_lang] + src_tokens + [tgt_lang] + tgt_tokens + [self.eos_id]
+        input_ids = np.concatenate(([src_lang],src_tokens,[tgt_lang],tgt_tokens, [EOS]))
         tgt_start = 1 + len(src_tokens)  # <src_lang> + src_tokens
 
         return {
@@ -174,21 +169,28 @@ class TranslateData(Dataset):
         }
 
 def collate_fn(batch, pad_id=0):
+    #print(batch[0]["input_ids"])
     input_ids_list = [item["input_ids"] for item in batch]
     tgt_starts = [item["tgt_start"] for item in batch]
     max_len = max(len(ids) for ids in input_ids_list)
 
-    input_ids_padded = [ids + [pad_id]*(max_len - len(ids)) for ids in input_ids_list]
-    labels_padded = [ids[1:] + [pad_id]*(max_len - len(ids)) for ids in input_ids_list]
+    input_ids_padded = [
+        np.concatenate((ids, np.full((max_len - len(ids),), pad_id, dtype=ids.dtype)))
+        for ids in input_ids_list
+    ]
+    labels_padded = [
+        np.concatenate((ids[1:], np.full((max_len - len(ids)+1,), pad_id, dtype=ids.dtype)))
+        for ids in input_ids_list
+    ]
 
     loss_mask = []
     for idx, ids in enumerate(input_ids_list):
         mask = [0]*tgt_starts[idx] + [1]*(len(ids)-tgt_starts[idx]) + [0]*(max_len - len(ids))
         loss_mask.append(mask)
 
-    input_ids = torch.tensor(input_ids_padded, dtype=torch.long)
-    labels = torch.tensor(labels_padded, dtype=torch.long)
-    loss_mask = torch.tensor(loss_mask, dtype=torch.float)
+    input_ids = torch.tensor(np.array(input_ids_padded), dtype=torch.long)
+    labels = torch.tensor(np.array(labels_padded), dtype=torch.long)
+    loss_mask = torch.tensor(np.array(loss_mask), dtype=torch.float)
 
     return {
         "input_ids": input_ids,

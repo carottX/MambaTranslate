@@ -1,0 +1,5 @@
+pandas
+numpy
+sentencepience
+mamba-ssm[casual-conv1d]
+torch

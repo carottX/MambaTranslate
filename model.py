@@ -19,7 +19,7 @@ class TranslateModel(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embed_size)
         layers = []
         for _ in range(num_layers):
-            layers.append(ResidualNet(Mamba(d_model=hidden_size, d_state=16,  d_conv=4,    expand=2, ).to("cuda"), embed_size, hidden_size))
+            layers.append(ResidualNet(Mamba(d_model=hidden_size, d_state=8,  d_conv=4,    expand=2,), embed_size, hidden_size))
         self.layers = nn.Sequential(*layers)
         self.final_norm = nn.LayerNorm(hidden_size)
         self.fc = nn.Linear(hidden_size, vocab_size)
