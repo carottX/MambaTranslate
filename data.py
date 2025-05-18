@@ -154,8 +154,8 @@ class TranslateData(Dataset):
             tgt_lang = EN
         else:
             # 英译中
-            src_tokens = self.zh_lines[i]
-            tgt_tokens = self.en_lines[i]
+            src_tokens = self.en_lines[i]
+            tgt_tokens = self.zh_lines[i]
             src_lang = EN
             tgt_lang = ZH
 
